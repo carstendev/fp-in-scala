@@ -17,15 +17,52 @@ trait Stream[+A] {
     case Empty => None
     case Cons(h, t) => if (f(h())) Some(h()) else t().find(f)
   }
-  def take(n: Int): Stream[A] = ???
 
-  def drop(n: Int): Stream[A] = ???
+  def toList: List[A] = {
+    this match {
+      case Empty => Nil
+      case Cons(h, t) => h() :: t().toList
+    }
+  }
 
-  def takeWhile(p: A => Boolean): Stream[A] = ???
+  def take(n: Int): Stream[A] = {
+    this match {
+      case Cons(h, t) if n > 0 => cons[A](h(), t().take(n - 1))
+      case _ => Empty
+    }
+  }
 
-  def forAll(p: A => Boolean): Boolean = ???
+  def drop(n: Int): Stream[A] = {
+    this match {
+      case Cons(_, t) if n > 0 => t().drop(n - 1)
+      case _ => this
+    }
+  }
 
-  def headOption: Option[A] = ???
+  def takeWhile(p: A => Boolean): Stream[A] = {
+    this match {
+      case Cons(h, t) =>
+        lazy val head = h()
+        if(p(head)) cons[A](head, t().takeWhile(p)) else Empty
+      case _ => Empty
+    }
+  }
+
+  def takeWhileWithFoldRight(p: A => Boolean): Stream[A] = {
+    foldRight(empty[A]){ (a, b) =>
+      if(p(a)) cons[A](a, b) else b
+    }
+  }
+
+  def forAll(p: A => Boolean): Boolean = {
+    foldRight(true)((a, b) => p(a) && b)
+  }
+
+  def headOption: Option[A] = {
+    foldRight[Option[A]](None){ (a, _) =>
+      Some(a)
+    }
+  }
 
   // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
   // writing your own function signatures.
