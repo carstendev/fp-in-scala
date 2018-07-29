@@ -30,21 +30,59 @@ object RNG {
       (f(a), rng2)
     }
 
-  def nonNegativeInt(rng: RNG): (Int, RNG) = ???
+  def nonNegativeInt(rng: RNG): (Int, RNG) = {
+    val (n ,nextRng) = rng.nextInt
+    (if (n < 0) -(n + 1) else n, nextRng)
+  }
 
-  def double(rng: RNG): (Double, RNG) = ???
+  def double(rng: RNG): (Double, RNG) = {
+    val (n ,nextRng) = nonNegativeInt(rng)
+    (n / (Int.MaxValue.toDouble + 1), nextRng)
+  }
 
-  def intDouble(rng: RNG): ((Int,Double), RNG) = ???
+  def doubleViaMap(rng: RNG): (Double, RNG) = {
+    map(nonNegativeInt)(_ / (Int.MaxValue.toDouble + 1))(rng)
+  }
 
-  def doubleInt(rng: RNG): ((Double,Int), RNG) = ???
+  def intDouble(rng: RNG): ((Int,Double), RNG) = {
+    val (intR, rng1) = nonNegativeInt(rng)
+    val (doubleR, rng2) = double(rng1)
+    ((intR, doubleR), rng2)
+  }
 
-  def double3(rng: RNG): ((Double,Double,Double), RNG) = ???
+  def doubleInt(rng: RNG): ((Double,Int), RNG) = {
+    val (doubleR, rng1) = double(rng)
+    val (intR, rng2) = nonNegativeInt(rng1)
+    ((doubleR, intR), rng2)
+  }
 
-  def ints(count: Int)(rng: RNG): (List[Int], RNG) = ???
+  def double3(rng: RNG): ((Double,Double,Double), RNG) = {
+    val (doubleR, rng1) = double(rng)
+    val (doubleR2, rng2) = double(rng1)
+    val (doubleR3, rng3) = double(rng2)
+    ((doubleR, doubleR2, doubleR3), rng3)
+  }
 
-  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = ???
+  def ints(count: Int)(rng: RNG): (List[Int], RNG) = {
+    Seq.fill(count)(Nil).foldLeft((List.empty[Int], rng)){ (a, _) =>
+      val (i, r) = a._2.nextInt
+      (a._1 :+ i, r)
+    }
+  }
 
-  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = ???
+  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = {
+    rng => {
+      val(i, r1) = ra(rng)
+      val(i2, r2) = rb(r1)
+      (f(i,i2), r2)
+    }
+  }
+
+  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = {
+      fs.foldRight(unit(List[A]())){ (f, acc) =>
+        map2(f, acc)(_ :: _)
+    }
+  }
 
   def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = ???
 }
